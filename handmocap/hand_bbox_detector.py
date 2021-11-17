@@ -46,7 +46,7 @@ class Third_View_Detector(BodyPoseEstimator):
         super(Third_View_Detector, self).__init__()
         print("Loading Third View Hand Detector")
         self.__load_hand_detector()
-    
+
 
     def __load_hand_detector(self):
          # load cfg and model
@@ -269,7 +269,7 @@ class Ego_Centric_Detector(BodyPoseEstimator):
                 # return cls_boxes_np, lr_np
             else:
                 return None, None
-        
+
 
     def detect_hand_bbox(self, img):
         hand_bbox_list = list()

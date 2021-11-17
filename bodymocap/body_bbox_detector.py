@@ -68,7 +68,7 @@ class BodyPoseEstimator(object):
         pafs = cv2.resize(pafs, (0, 0), fx=upsample_ratio, fy=upsample_ratio, interpolation=cv2.INTER_CUBIC)
 
         return heatmaps, pafs, scale, pad
-    
+
     def detect_body_pose(self, img):
         """
         Output:
@@ -87,12 +87,12 @@ class BodyPoseEstimator(object):
         num_keypoints = Pose.num_kpts
         for kpt_idx in range(num_keypoints):  # 19th for bg
             total_keypoints_num += extract_keypoints(heatmaps[:, :, kpt_idx], all_keypoints_by_type, total_keypoints_num)
-        
+
         pose_entries, all_keypoints = group_keypoints(all_keypoints_by_type, pafs, demo=True)
         for kpt_id in range(all_keypoints.shape[0]):
             all_keypoints[kpt_id, 0] = (all_keypoints[kpt_id, 0] * stride / upsample_ratio - pad[1]) / scale
             all_keypoints[kpt_id, 1] = (all_keypoints[kpt_id, 1] * stride / upsample_ratio - pad[0]) / scale
-        
+
         '''
         # print(len(pose_entries))
         if len(pose_entries)>1:

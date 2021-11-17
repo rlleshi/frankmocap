@@ -20,7 +20,7 @@ class HandMocap:
                                                (0.5, 0.5, 0.5))]
         self.normalize_transform = transforms.Compose(transform_list)
 
-        #Load Hand network 
+        #Load Hand network
         self.opt = TestOptions().parse([])
 
         #Default options
@@ -62,7 +62,7 @@ class HandMocap:
             margin = (height-width) // 2
             min_x = max(min_x-margin, 0)
             max_x = min(max_x+margin, ori_width)
-        
+
         # add additional margin
         if add_margin:
             margin = int(0.3 * (max_y-min_y)) # if use loose crop, change 0.3 to 1.0

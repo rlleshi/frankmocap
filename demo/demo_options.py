@@ -6,7 +6,7 @@ class DemoOptions():
 
     def __init__(self):
         parser = argparse.ArgumentParser()
-        
+
         # parser.add_argument('--checkpoint', required=False, default=default_checkpoint, help='Path to pretrained checkpoint')
         default_checkpoint_body_smpl ='./extra_data/body_module/pretrained_weights/2020_05_31-00_50_43-best-51.749683916568756.pt'
         parser.add_argument('--checkpoint_body_smpl', required=False, default=default_checkpoint_body_smpl, help='Path to pretrained checkpoint')
@@ -32,6 +32,20 @@ class DemoOptions():
 
         # Other options
         parser.add_argument('--single_person', action='store_true', help='Reconstruct only one person in the scene with the biggest bbox')
+        parser.add_argument('--enlarge_body_bbox', action='store_true', help='enlarge body bounding boxes by 10%')
+        parser.add_argument('--stabilize_body_bbox', action='store_true', help='stabilize drastic and sudden changes in body bbox')
+        parser.add_argument('--stabilize_hand_bbox', action='store_true', help='stabilize drastic and sudden changes in hand bbox')
+        parser.add_argument(
+            '--interpolate_hand_bb',
+            action='store_true',
+            help=('interpolate missing bbox information for hands as well as tries to stabilize predictions'
+                'Can use information from already saved bounding boxes (which should be in the same folder) according to the `--save_bbox_output` flag'
+                'Otherwise interpolates only using the last two bounding boxes'))
+        parser.add_argument(
+            '--interpolate_hand_bb_count',
+            type=int,
+            default=5,
+            help='interpolate count for past and future frames for hand bounding boxes')
         parser.add_argument('--no_display', action='store_true', help='Do not visualize output on the screen')
         parser.add_argument('--no_video_out', action='store_true', help='Do not merge rendered frames to video (ffmpeg)')
         parser.add_argument('--smpl_dir', type=str, default='./extra_data/smpl/', help='Folder where smpl files are located.')
@@ -48,7 +62,7 @@ class DemoOptions():
         parser.add_argument('--crop_type', type=str, default='no_crop', choices=['hand_crop', 'no_crop'],
             help = """ 'hand_crop' means the hand are central cropped in input. (left hand should be flipped to right). 
                         'no_crop' means hand detection is required to obtain hand bbox""")
-        
+
         # Whole motion capture (FrankMocap) specific options
         parser.add_argument('--frankmocap_fast_mode', action='store_true', help="Use fast hand detection mode for whole body motion capture (frankmocap)")
 
@@ -57,7 +71,7 @@ class DemoOptions():
             choices=['pytorch3d', 'opendr', 'opengl_gui', 'opengl'], help="type of renderer to use")
 
         self.parser = parser
-    
+
 
     def parse(self):
         self.opt = self.parser.parse_args()
