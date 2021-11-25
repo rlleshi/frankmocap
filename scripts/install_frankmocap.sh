@@ -21,7 +21,7 @@ echo ">>  Download extra data for hand module"
 sh scripts/download_data_hand_module.sh
 
 echo ""
-if [ ! -d "sample_data" ] 
+if [ ! -d "sample_data" ]
 then
     echo "Downloading sample videos"
     wget https://dl.fbaipublicfiles.com/eft/sampledata_frank.tar && tar -xvf sampledata_frank.tar && rm sampledata_frank.tar && mv sampledata sample_data

@@ -52,6 +52,7 @@ class DemoOptions():
         parser.add_argument('--skip', action='store_true', help='Skip there exist already processed outputs')
         parser.add_argument('--video_url', type=str, default=None, help='URL of YouTube video, or image.')
         parser.add_argument('--download', '-d', action='store_true', help='Download YouTube video first (in webvideo folder), and process it')
+        parser.add_argument('--fps', type=int, default=30)
 
         # Body mocap specific options
         parser.add_argument('--use_smplx', action='store_true', help='Use SMPLX model for body mocap')
@@ -60,7 +61,7 @@ class DemoOptions():
         parser.add_argument('--view_type', type=str, default='third_view', choices=['third_view', 'ego_centric'],
             help = "The view type of input. It could be ego-centric (such as epic kitchen) or third view")
         parser.add_argument('--crop_type', type=str, default='no_crop', choices=['hand_crop', 'no_crop'],
-            help = """ 'hand_crop' means the hand are central cropped in input. (left hand should be flipped to right). 
+            help = """ 'hand_crop' means the hand are central cropped in input. (left hand should be flipped to right).
                         'no_crop' means hand detection is required to obtain hand bbox""")
 
         # Whole motion capture (FrankMocap) specific options

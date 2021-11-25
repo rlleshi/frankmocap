@@ -38,25 +38,29 @@ BODY_BBOX_CHANGE_RATE = list()
 
 
 def __interpolate_hand_bb(hand_bbox_list, out_dir, img_path, interpolation_count,
-                          stabilize=False, weight_deaden={'past': 1, 'future': 0.5}):
+                          stabilize=False, weight_deaden={'past': 1, 'future': 0.3}):
     """Interpolates using frames from past and future if bboxes are saved accordingly.
        Uses weights to weigh closer frames heavier.
 
        Can also interpolate for existing frames if `stabilize=True`
        `weight_deaden` is used to further deaden the influence of frames.
-       1 means nothing happens. """
+       1 means nothing happens. As a rule future frames should be deadened because they have
+       the advantage of coming after past frames. So, the next adjecent future frame will influence
+       more than the previous adjecent future frame. """
     path = osp.join(out_dir, 'bbox')
-
     if not osp.exists(path):
         CONSOLE.print('No file with bounding boxes found. Generate BBoxes first (look at demo_options).', style='bold red')
-        return
+        return hand_bbox_list
     else:
         CONSOLE.print(f'Processing {img_path}', style='green')
         img_id = int(osp.split(img_path)[-1][:5])
 
         # if values of both hands are true, there is something wrong with the model's output
-        if np.array_equal(hand_bbox_list[0]['left_hand'], hand_bbox_list[0]['right_hand']):
-            stabilize = True
+        if hand_bbox_list[0] is not None:
+            if np.array_equal(hand_bbox_list[0]['left_hand'], hand_bbox_list[0]['right_hand']):
+                stabilize = True
+        else:
+            hand_bbox_list[0] = {'left_hand': None, 'right_hand': None}
 
         for hand in ['left_hand', 'right_hand']:
             if img_id < interpolation_count:
@@ -114,7 +118,7 @@ def __interpolate_hand_bb(hand_bbox_list, out_dir, img_path, interpolation_count
 
 
 def __stabilize_hand_bbox(hand_bbox_list, out_dir, img_path, interpolation_count,
-                          x_w_thresh = 0.2, y_h_thresh = 1, look_back=5):
+                          x_w_thresh = .2, y_h_thresh = .25, look_back=4):
     """Stabilize hand bounding box if changes are sudden and drastic
        from frame to frame.
 
@@ -192,13 +196,17 @@ def __stabilize_hand_bbox(hand_bbox_list, out_dir, img_path, interpolation_count
     return hand_bbox_list
 
 
-def __stabilize_body_bbox(body_bbox_list, x_w_thresh = 0.20, look_back = 5):
+def __stabilize_body_bbox(body_bbox_list, x_w_thresh=.07, look_back=20, skip=1):
     """Stabilize body bounding box if changes are sudden and drastic
        from frame to frame.
 
        Threshold: If the X coordinate and width change by more than `x_w_thresh`
-       and `look_back` frames do not exceed this threshold, then replace current
-       bbox by the one immediately preceeding it."""
+       and #`look_back` frames do not exceed this threshold, then replace current
+       bbox by the one immediately preceeding it. The idea is that the change has been
+       relatively low and we suddently encountered a change.
+
+       `skip=0` used to check for adjecent frame (past frame)
+       `skip=1` skips one frame and checks the difference with the next one"""
     global BODY_BBOX_LIST, BODY_BBOX_CHANGE_RATE
     bb = body_bbox_list[0]
     count = len(BODY_BBOX_LIST)
@@ -207,24 +215,23 @@ def __stabilize_body_bbox(body_bbox_list, x_w_thresh = 0.20, look_back = 5):
     # not enough boxes to look back to
     if count < look_back:
         return body_bbox_list
+    assert skip < look_back, 'skip frames greater than look back'
 
-    change_x = abs(bb[0] - BODY_BBOX_LIST[count-1][0]) / bb[0]
-    change_w = abs(bb[2] - BODY_BBOX_LIST[count-1][2]) / bb[2]
+    change_x = abs(bb[0] - BODY_BBOX_LIST[count-1-skip][0]) / bb[0]
+    change_w = abs(bb[2] - BODY_BBOX_LIST[count-1-skip][2]) / bb[2]
     BODY_BBOX_CHANGE_RATE.append((change_x, change_w))
-    CONSOLE.print('Body BBox rate changes', style='green')
-    CONSOLE.print(f'Change in X: {change_x}', style='green')
-    CONSOLE.print(f'Change in W: {change_w}', style='green')
 
     if change_x > x_w_thresh and change_w > x_w_thresh:
         # if the past changes were relatively stable, it means current
         # bbox prediction had a sudden large change
         avg_past_change_x, avg_past_change_w = 0, 0
-        for i in range(look_back):
+        for i in range(skip, look_back+skip):
             avg_past_change_x += BODY_BBOX_CHANGE_RATE[count_rate-1-i][0]
             avg_past_change_w += BODY_BBOX_CHANGE_RATE[count_rate-1-i][1]
 
-        if avg_past_change_x / look_back < x_w_thresh and avg_past_change_w / look_back < x_w_thresh:
-            CONSOLE.print('Replaced body bbox with previous one', style='yellow')
+        if avg_past_change_x / look_back < 4*x_w_thresh and avg_past_change_w / look_back < 4*x_w_thresh:
+            CONSOLE.print('Replaced body bbox with previous one;'
+                f' Change Rate -> X: {change_x} |  W: {change_w}', style='bold green')
             BODY_BBOX_CHANGE_RATE.pop()
             BODY_BBOX_CHANGE_RATE.append(BODY_BBOX_CHANGE_RATE[count_rate - 1])
             BODY_BBOX_LIST.pop()
@@ -234,13 +241,13 @@ def __stabilize_body_bbox(body_bbox_list, x_w_thresh = 0.20, look_back = 5):
 
 
 
-def __enlarge_body_bbox(body_bbox_list, rate=0.05):
+def __enlarge_body_bbox(body_bbox_list, rate=.2):
     """Enlarge body bounding box.
        Scale the `w` and `h` components by `rate`
        Adjust the rectange origin (x, y) by substracting half the scale difference"""
     new_bbox_list = list()
     bb = body_bbox_list[0]
-    CONSOLE.print(f'Body BBox Before: {bb}', style='yellow')
+    CONSOLE.print(f'Body BBox Before: {bb}', style='green')
 
     # adjust (x, y)
     new_bb = [int(bb[0] - (bb[0] * rate / 2)), int(bb[1] - (bb[1] * rate / 2))]
@@ -249,7 +256,7 @@ def __enlarge_body_bbox(body_bbox_list, rate=0.05):
     new_bb.append(int(bb[2] + bb[2] * rate))
     new_bb.append(int(bb[3] + bb[3] * rate))
 
-    CONSOLE.print(f'Body BBox After: {new_bb}', style='green')
+    CONSOLE.print(f'Body BBox After: {new_bb}', style='yellow')
     new_bbox_list.append(np.array(new_bb))
 
     return new_bbox_list
@@ -316,16 +323,16 @@ def run_regress(
     else:
         _, body_bbox_list = bbox_detector.detect_body_bbox(img_original_bgr.copy())
 
-        if len(body_bbox_list) < 1: 
+        if len(body_bbox_list) < 1:
             return list(), list(), list()
 
-        # sort the bbox using bbox size 
+        # sort the bbox using bbox size
         # only keep on bbox if args.single_person is set
         hand_bbox_list = [None, ] * len(body_bbox_list)
         body_bbox_list, _ = __filter_bbox_list(
             body_bbox_list, hand_bbox_list, args.single_person)
 
-        # body regression first 
+        # body regression first
         pred_body_list = body_mocap.regress(img_original_bgr, body_bbox_list)
         assert len(body_bbox_list) == len(pred_body_list)
 
@@ -336,12 +343,12 @@ def run_regress(
         # hand regression
         pred_hand_list = hand_mocap.regress(
             img_original_bgr, hand_bbox_list, add_margin=True)
-        assert len(hand_bbox_list) == len(pred_hand_list) 
+        assert len(hand_bbox_list) == len(pred_hand_list)
 
     # integration by copy-and-paste
     integral_output_list = integration_copy_paste(
         pred_body_list, pred_hand_list, body_mocap.smpl, img_original_bgr.shape)
-    
+
     return body_bbox_list, hand_bbox_list, integral_output_list
 
 
@@ -452,7 +459,7 @@ def run_frank_mocap(args, bbox_detector, body_mocap, hand_mocap, visualizer):
 
     # save images as a video
     if not args.no_video_out and input_type in ['video', 'webcam']:
-        demo_utils.gen_video_out(args.out_dir, args.seq_name)
+        demo_utils.gen_video_out(args.out_dir, args.seq_name, args.fps)
 
     if input_type =='webcam' and input_data is not None:
         input_data.release()

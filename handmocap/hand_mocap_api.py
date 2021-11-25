@@ -154,7 +154,7 @@ class HandMocap:
 
             for hand_type in hand_bboxes:
                 bbox = hand_bboxes[hand_type]
-                
+
                 if bbox is None: 
                     continue
                 else:
