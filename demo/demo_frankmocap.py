@@ -45,8 +45,9 @@ def __interpolate_hand_bb(hand_bbox_list, out_dir, img_path, interpolation_count
        Can also interpolate for existing frames if `stabilize=True`
        `weight_deaden` is used to further deaden the influence of frames.
        1 means nothing happens. As a rule future frames should be deadened because they have
-       the advantage of coming after past frames. So, the next adjecent future frame will influence
-       more than the previous adjecent future frame. """
+       the advantage of coming after past frames. So, the next adjecent future frame will 
+       influence more than the previous adjecent future frame. """
+
     path = osp.join(out_dir, 'bbox')
     if not osp.exists(path):
         CONSOLE.print('No file with bounding boxes found. Generate BBoxes first (look at demo_options).', style='bold red')
@@ -55,8 +56,9 @@ def __interpolate_hand_bb(hand_bbox_list, out_dir, img_path, interpolation_count
         CONSOLE.print(f'Processing {img_path}', style='green')
         img_id = int(osp.split(img_path)[-1][:5])
 
-        # if values of both hands are true, there is something wrong with the model's output
         if hand_bbox_list[0] is not None:
+            # if values of both hands are the same, there is something wrong with the model's output
+            # so we instead interpolate both
             if np.array_equal(hand_bbox_list[0]['left_hand'], hand_bbox_list[0]['right_hand']):
                 stabilize = True
         else:
@@ -92,8 +94,8 @@ def __interpolate_hand_bb(hand_bbox_list, out_dir, img_path, interpolation_count
                     continue
 
                 if saved_hand_bbox is not None:
+                    # initialized with first frame if `hand_bbox` is None
                     if hand_bbox[0] == 0 and hand_bbox[1] == 0 and hand_bbox[2] == 0 and hand_bbox[3] == 0:
-                        # initialized with first frame
                         hand_bbox = saved_hand_bbox
                     else:
                         # past frames, weight normal
@@ -196,7 +198,8 @@ def __stabilize_hand_bbox(hand_bbox_list, out_dir, img_path, interpolation_count
     return hand_bbox_list
 
 
-def __stabilize_body_bbox(body_bbox_list, x_w_thresh=.07, look_back=20, skip=1):
+def __stabilize_body_bbox(body_bbox_list, x_w_thresh=.15, look_back=5, skip=0,
+                          past_multiplier=1):
     """Stabilize body bounding box if changes are sudden and drastic
        from frame to frame.
 
@@ -205,8 +208,10 @@ def __stabilize_body_bbox(body_bbox_list, x_w_thresh=.07, look_back=20, skip=1):
        bbox by the one immediately preceeding it. The idea is that the change has been
        relatively low and we suddently encountered a change.
 
+        Use `skip` especially for high fps videos where changes are small.
        `skip=0` used to check for adjecent frame (past frame)
        `skip=1` skips one frame and checks the difference with the next one"""
+
     global BODY_BBOX_LIST, BODY_BBOX_CHANGE_RATE
     bb = body_bbox_list[0]
     count = len(BODY_BBOX_LIST)
@@ -229,7 +234,9 @@ def __stabilize_body_bbox(body_bbox_list, x_w_thresh=.07, look_back=20, skip=1):
             avg_past_change_x += BODY_BBOX_CHANGE_RATE[count_rate-1-i][0]
             avg_past_change_w += BODY_BBOX_CHANGE_RATE[count_rate-1-i][1]
 
-        if avg_past_change_x / look_back < 4*x_w_thresh and avg_past_change_w / look_back < 4*x_w_thresh:
+        if avg_past_change_x / look_back < past_multiplier * x_w_thresh and \
+           avg_past_change_w / look_back < past_multiplier * x_w_thresh:
+
             CONSOLE.print('Replaced body bbox with previous one;'
                 f' Change Rate -> X: {change_x} |  W: {change_w}', style='bold green')
             BODY_BBOX_CHANGE_RATE.pop()
@@ -241,7 +248,7 @@ def __stabilize_body_bbox(body_bbox_list, x_w_thresh=.07, look_back=20, skip=1):
 
 
 
-def __enlarge_body_bbox(body_bbox_list, rate=.2):
+def __enlarge_body_bbox(body_bbox_list, rate=.1):
     """Enlarge body bounding box.
        Scale the `w` and `h` components by `rate`
        Adjust the rectange origin (x, y) by substracting half the scale difference"""
