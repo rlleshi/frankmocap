@@ -14,7 +14,6 @@ from rich.console import Console
 from tqdm.contrib.concurrent import process_map
 from tqdm import tqdm
 
-
 CONSOLE = Console()
 
 VIDEO_EXTS = ['mp4']
@@ -49,8 +48,11 @@ def merge_pkl(path, out):
             content = pickle.load(f)
 
         if content['pred_output_list'][0] is not None:
-            result.append(list(map(abs,
-                content['pred_output_list'][0]['pred_body_joints_img'][:25])))
+            result.append(
+                list(
+                    map(
+                        abs, content['pred_output_list'][0]
+                        ['pred_body_joints_img'][:25])))
 
     np.save(osp.join(path, f'{out}.npy'), np.expand_dims(np.array(result), 1))
 
@@ -63,10 +65,11 @@ def parse_args():
     parser.add_argument('--out-dir',
                         default='frankmocap/mocap_output/',
                         help='out video directory')
-    parser.add_argument('--num-processes',  # TODO: ggf.
-                        type=int,
-                        default=(cpu_count() - 2 or 1),
-                        help='number of processes used')
+    parser.add_argument(
+        '--num-processes',  # TODO: ggf.
+        type=int,
+        default=(cpu_count() - 2 or 1),
+        help='number of processes used')
     parser.add_argument('--level',
                         type=int,
                         default=1,
@@ -86,20 +89,13 @@ def extract_3d_pose(items):
     out_dir = osp.join(args.out_dir, video_name)
     CONSOLE.print(f'Processing {video}', style='bold green')
     if osp.exists(out_dir):
-        CONSOLE.print(f'{video} has already been processed. Skipping...', style='yellow')
+        CONSOLE.print(f'{video} has already been processed. Skipping...',
+                      style='yellow')
         return
 
     subargs = [
-        'python',
-        '-m',
-        SCRIPT,
-        '--input_path',
-        video,
-        '--out_dir',
-        out_dir,
-        '--save_pred_pkl',
-        '--single_person',
-        '--no_display'
+        'python', '-m', SCRIPT, '--input_path', video, '--out_dir', out_dir,
+        '--save_pred_pkl', '--single_person', '--no_display'
         # '--no_video_out'
     ]
     result = subprocess.run(subargs, capture_output=True)

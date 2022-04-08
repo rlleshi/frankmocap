@@ -142,6 +142,7 @@ def integration_copy_paste(pred_body_list, pred_hand_list, smplx_model, image_sh
         pred_vertices = smplx_output.vertices
         pred_vertices = pred_vertices[0].detach().cpu().numpy()
         pred_body_joints = smplx_output.joints
+        # print(f'SHAPE: {pred_body_joints.shape}')
         pred_body_joints = pred_body_joints[0].detach().cpu().numpy()   
         pred_lhand_joints = smplx_output.left_hand_joints
         pred_lhand_joints = pred_lhand_joints[0].detach().cpu().numpy()
@@ -171,12 +172,16 @@ def integration_copy_paste(pred_body_list, pred_hand_list, smplx_model, image_sh
             pred_vertices_bbox, bbox_scale_ratio, bbox_top_left, image_shape[1], image_shape[0])
         integral_output['pred_vertices_img'] = pred_vertices_img
 
-        # convert joints to original image space (X, Y are aligned to image)
+        # * convert joints to original image space (X, Y are aligned to image)
         pred_body_joints_bbox = convert_smpl_to_bbox(
             pred_body_joints, camScale, camTrans)
+        # print(pred_body_joints_bbox.shape)
+        # print(pred_body_joints_bbox)
         pred_body_joints_img = convert_bbox_to_oriIm(
             pred_body_joints_bbox, bbox_scale_ratio, bbox_top_left, image_shape[1], image_shape[0])
         integral_output['pred_body_joints_img'] = pred_body_joints_img
+        # print(pred_body_joints_img.shape)
+        # print(pred_body_joints_img)
 
         # convert left /right joints to original image space (X, Y are aligned to image)
         pred_lhand_joints_bbox = convert_smpl_to_bbox(
